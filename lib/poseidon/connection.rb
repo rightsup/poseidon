@@ -118,13 +118,15 @@ module Poseidon
       s = ensure_read_or_timeout(n)
       buffer = Protocol::ResponseBuffer.new(s)
       response_class.read(buffer)
-    rescue Errno::ECONNRESET, SocketError, TimeoutException
+    rescue Errno::ECONNRESET, SocketError, Errno::ETIMEDOUT, TimeoutException
       @socket = nil
       raise_connection_failed_error
     end
 
     def ensure_read_or_timeout(maxlen)
       if IO.select([@socket], nil, nil, @socket_timeout_ms / 1000.0)
+        # There is a potential race condition here, where the socket could time out between IO Select and Write
+        # This will throw a Errno::ETIMEDOUT, but it will be caught in the calling code
          @socket.read(maxlen)
       else
          raise TimeoutException.new
@@ -135,13 +137,15 @@ module Poseidon
       buffer = Protocol::RequestBuffer.new
       request.write(buffer)
       ensure_write_or_timeout([buffer.to_s.bytesize].pack("N") + buffer.to_s)
-    rescue Errno::EPIPE, Errno::ECONNRESET, TimeoutException
+    rescue Errno::EPIPE, Errno::ECONNRESET, Errno::ETIMEDOUT, TimeoutException
       @socket = nil
       raise_connection_failed_error
     end
 
     def ensure_write_or_timeout(data)
       if IO.select(nil, [@socket], nil, @socket_timeout_ms / 1000.0)
+        # There is a potential race condition here, where the socket could time out between IO Select and Write
+        # This will throw a Errno::ETIMEDOUT, but it will be caught in the calling code
         @socket.write(data)
       else
         raise TimeoutException.new
