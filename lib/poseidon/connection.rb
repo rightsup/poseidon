@@ -51,7 +51,7 @@ module Poseidon
       req = ProduceRequest.new( request_common(:produce),
                                 required_acks,
                                 timeout,
-                                messages_for_topics) 
+                                messages_for_topics)
       send_request(req)
       if required_acks != 0
         read_response(ProduceResponse)
@@ -71,7 +71,7 @@ module Poseidon
                                 REPLICA_ID,
                                 max_wait_time,
                                 min_bytes,
-                                topic_fetches) 
+                                topic_fetches)
       send_request(req)
       read_response(FetchResponse)
     end
@@ -102,9 +102,36 @@ module Poseidon
     def ensure_connected
       if @socket.nil? || @socket.closed?
         begin
-          @socket = TCPSocket.new(@host, @port)
+          @socket = connect_with_timeout(@host, @port, @socket_timeout_ms / 1000.0)
         rescue SystemCallError
           raise_connection_failed_error
+        end
+      end
+    end
+
+    # Explained on http://spin.atomicobject.com/2013/09/30/socket-connection-timeout-ruby/
+    def connect_with_timeout(host, port, timeout = 5)
+      addr = Socket.getaddrinfo(host, nil)
+      sockaddr = Socket.pack_sockaddr_in(port, addr[0][3])
+
+      Socket.new(Socket.const_get(addr[0][0]), Socket::SOCK_STREAM, 0).tap do |socket|
+        socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
+
+        begin
+          socket.connect_nonblock(sockaddr)
+        rescue IO::WaitWritable
+          if IO.select(nil, [socket], nil, timeout)
+            begin
+              socket.connect_nonblock(sockaddr)
+            rescue Errno::EISCONN
+            rescue
+              socket.close
+              raise
+            end
+          else
+            socket.close
+            raise TimeoutException
+          end
         end
       end
     end
