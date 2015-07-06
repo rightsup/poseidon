@@ -63,7 +63,7 @@ module Poseidon
       end
 
       if messages_to_send.pending_messages?
-        raise "Failed to send all messages: #{messages_to_send.messages} remaining"
+        raise "Poseidon: Failed to send all messages: #{messages_to_send.messages} remaining"
       else
         true
       end
@@ -138,7 +138,7 @@ module Poseidon
       return false if messages_for_broker.broker_id == -1
       to_send = messages_for_broker.build_protocol_objects(@compression_config)
 
-      Poseidon.logger.debug { "Sending messages to broker #{messages_for_broker.broker_id}" }
+      Poseidon.logger.debug { "Poseidon: Sending messages to broker #{messages_for_broker.broker_id}" }
       response = @broker_pool.execute_api_call(messages_for_broker.broker_id, :produce,
                                               required_acks, ack_timeout_ms,
                                               to_send)
@@ -147,7 +147,8 @@ module Poseidon
       else
         messages_for_broker.successfully_sent(response)
       end
-    rescue Connection::ConnectionFailedError, Connection::TimeoutException
+    rescue Connection::ConnectionFailedError, Connection::TimeoutException => e
+      Poseidon.logger.error { "Poseidon: Connection error while sending messages to broker #{messages_for_broker.broker_id}: #{e.message}"}
       false
     end
   end
