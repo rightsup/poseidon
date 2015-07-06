@@ -43,8 +43,10 @@ module Poseidon
       failed = []
       producer_response.topic_response.each do |topic_response|
         topic_response.partitions.each do |partition|
+          # So long as required_acks are != 0, this method will always be invoked during a ProduceRequest
+          # partition[:error] will be the raw error code available in the Errors hash in Poseidon::Errors. It's looked up in ProtocolStruct to determine the error_class
+          Poseidon.logger.error { "Received #{partition.error_class} when attempting to send messages to #{topic_response.topic} on #{partition.partition}" } unless partition[:error] == Poseidon::Errors::NO_ERROR_CODE
           if ALWAYS_RETRYABLE.include?(partition.error_class)
-            Poseidon.logger.debug { "Received #{partition.error_class} when attempting to send messages to #{topic_response.topic} on #{partition.partition}" }
             failed.push(*@topics[topic_response.topic][partition.partition])
           end
         end
