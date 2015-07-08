@@ -103,7 +103,8 @@ module Poseidon
       if @socket.nil? || @socket.closed?
         begin
           @socket = connect_with_timeout(@host, @port, @socket_timeout_ms / 1000.0)
-        rescue SystemCallError
+        rescue SystemCallError => e
+          Poseidon.logger.error { "Poseidon: Error while calling connect_with_timeout: #{e.message}"}
           raise_connection_failed_error
         end
       end
@@ -139,14 +140,16 @@ module Poseidon
     def read_response(response_class)
       r = ensure_read_or_timeout(4)
       if r.nil?
+        Poseidon.logger.error { "Poseidon: Error while calling read_response for a #{response_class} response: received nil from call to read socket"}
         raise_connection_failed_error
       end
       n = r.unpack("N").first
       s = ensure_read_or_timeout(n)
       buffer = Protocol::ResponseBuffer.new(s)
       response_class.read(buffer)
-    rescue Errno::ECONNRESET, SocketError, Errno::ETIMEDOUT, TimeoutException
+    rescue Errno::ECONNRESET, SocketError, Errno::ETIMEDOUT, TimeoutException => e
       @socket = nil
+      Poseidon.logger.error { "Poseidon: Error while calling read_response for a #{response_class} response: #{e.message}"}
       raise_connection_failed_error
     end
 
@@ -156,6 +159,7 @@ module Poseidon
         # This will throw a Errno::ETIMEDOUT, but it will be caught in the calling code
          @socket.read(maxlen)
       else
+         Poseidon.logger.error { "Poseidon: Error while calling ensure_read_or_timeout: IO#select returned no ready sockets, raising TimeoutException"}
          raise TimeoutException.new
       end
     end
@@ -164,8 +168,9 @@ module Poseidon
       buffer = Protocol::RequestBuffer.new
       request.write(buffer)
       ensure_write_or_timeout([buffer.to_s.bytesize].pack("N") + buffer.to_s)
-    rescue Errno::EPIPE, Errno::ECONNRESET, Errno::ETIMEDOUT, TimeoutException
+    rescue Errno::EPIPE, Errno::ECONNRESET, Errno::ETIMEDOUT, TimeoutException => e
       @socket = nil
+      Poseidon.logger.error { "Poseidon: Error while calling send_request for a #{request.class}: #{e.message}"}
       raise_connection_failed_error
     end
 
