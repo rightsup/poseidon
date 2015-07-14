@@ -12,8 +12,8 @@ module Poseidon
     REPLICA_ID = -1 # Replica id is always -1 for non-brokers
 
     # @yieldparam [Connection]
-    def self.open(host, port, client_id, socket_timeout_ms, &block)
-      connection = new(host, port, client_id, socket_timeout_ms)
+    def self.open(host, port, client_id, socket_timeout_ms, connect_timeout_ms, &block)
+      connection = new(host, port, client_id, socket_timeout_ms, connect_timeout_ms)
 
       yield connection
     ensure
@@ -27,12 +27,13 @@ module Poseidon
     # @param [String] host Host to connect to
     # @param [Integer] port Port broker listens on
     # @param [String] client_id Unique across processes?
-    def initialize(host, port, client_id, socket_timeout_ms)
+    def initialize(host, port, client_id, socket_timeout_ms, connect_timeout_ms)
       @host = host
       @port = port
 
       @client_id = client_id
       @socket_timeout_ms = socket_timeout_ms
+      @connect_timeout_ms = connect_timeout_ms
     end
 
     # Close broker connection
@@ -102,7 +103,7 @@ module Poseidon
     def ensure_connected
       if @socket.nil? || @socket.closed?
         begin
-          @socket = connect_with_timeout(@host, @port, @socket_timeout_ms / 1000.0)
+          @socket = connect_with_timeout(@host, @port, @connect_timeout_ms / 1000.0)
         rescue SystemCallError => e
           Poseidon.logger.error { "Poseidon: Error while calling connect_with_timeout: #{e.message}"}
           raise_connection_failed_error

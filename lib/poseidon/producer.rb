@@ -81,6 +81,7 @@ module Poseidon
       :retry_backoff_ms,
       :required_acks,
       :socket_timeout_ms,
+      :connect_timeout_ms,
       :type,
     ]
 
@@ -131,6 +132,9 @@ module Poseidon
     #
     # @option options [Integer] :socket_timeout_ms] (10000)
     #   How long the producer socket waits for any reply from server.
+    #
+    # @option options [Integer] :connect_timeout_ms] (10000)
+    #   How long the producer socket waits for a connection to the server.
     #
     # @api public
     def initialize(brokers, client_id, options = {})
