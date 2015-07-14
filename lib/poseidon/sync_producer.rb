@@ -93,7 +93,7 @@ module Poseidon
       return if !messages_to_send.needs_metadata?
 
       2.times do |n|
-        sleep 5
+        Kernel.sleep retry_backoff_ms / 1000.0
 
         Poseidon.logger.debug { "Fetching metadata for #{messages_to_send.topic_set}. (Attempt #{n+2})" }
         refresh_metadata(messages_to_send.topic_set)
