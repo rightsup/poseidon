@@ -19,13 +19,14 @@ module Poseidon
       :partitioner => nil,
       :max_send_retries => 3,
       :retry_backoff_ms => 100,
+      :metadata_refresh_backoff_ms => 60_000,
       :required_acks => 0,
       :ack_timeout_ms => 1500,
       :socket_timeout_ms => 10_000,
       :connect_timeout_ms => 10_000
     }
 
-    attr_reader :client_id, :retry_backoff_ms, :max_send_retries,
+    attr_reader :client_id, :retry_backoff_ms, :metadata_refresh_backoff_ms, :max_send_retries,
       :metadata_refresh_interval_ms, :required_acks, :ack_timeout_ms, :socket_timeout_ms, :connect_timeout_ms
     def initialize(client_id, seed_brokers, options = {})
       @client_id = client_id
@@ -43,7 +44,13 @@ module Poseidon
       messages_to_send = MessagesToSend.new(messages, @cluster_metadata)
 
       if refresh_interval_elapsed?
-        refresh_metadata(messages_to_send.topic_set)
+        begin
+          refresh_metadata(messages_to_send.topic_set)
+        rescue Errors::UnableToFetchMetadata => e
+          # Unable to fetch metadata -- ignore for now, try it again in a bit
+          @cluster_metadata.last_refreshed_at = Time.now - metadata_refresh_interval_ms / 1000.0 + metadata_refresh_backoff_ms / 1000.0
+          Poseidon.logger.error { "Poseidon: Error while refreshing metadata: #{e.message}"}
+        end
       end
 
       ensure_metadata_available_for_topics(messages_to_send)
@@ -100,6 +107,7 @@ module Poseidon
       @socket_timeout_ms  = handle_option(options, :socket_timeout_ms)
       @connect_timeout_ms = handle_option(options, :connect_timeout_ms)
       @retry_backoff_ms   = handle_option(options, :retry_backoff_ms)
+      @metadata_refresh_backoff_ms = handle_option(options, :metadata_refresh_backoff_ms)
 
       @metadata_refresh_interval_ms = 
         handle_option(options, :metadata_refresh_interval_ms)

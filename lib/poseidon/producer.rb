@@ -79,6 +79,7 @@ module Poseidon
       :metadata_refresh_interval_ms,
       :partitioner,
       :retry_backoff_ms,
+      :metadata_refresh_backoff_ms,
       :required_acks,
       :socket_timeout_ms,
       :connect_timeout_ms,
