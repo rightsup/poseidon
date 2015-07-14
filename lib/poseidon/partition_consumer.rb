@@ -23,7 +23,7 @@ module Poseidon
     #
     def self.consumer_for_partition(client_id, seed_brokers, topic, partition, offset, options = {})
 
-      broker = BrokerPool.open(client_id, seed_brokers, options[:socket_timeout_ms] || 10_000) do |broker_pool|
+      broker = BrokerPool.open(client_id, seed_brokers, options[:socket_timeout_ms] || 10_000, options[:connect_timeout_ms] || 10_000) do |broker_pool|
         cluster_metadata = ClusterMetadata.new
         cluster_metadata.update(broker_pool.fetch_metadata([topic]))
 
@@ -74,7 +74,7 @@ module Poseidon
 
       handle_options(options)
 
-      @connection = Connection.new(host, port, client_id, @socket_timeout_ms)
+      @connection = Connection.new(host, port, client_id, @socket_timeout_ms, @connect_timeout_ms)
       @topic = topic
       @partition = partition
       if Symbol === offset
@@ -155,9 +155,14 @@ module Poseidon
       @min_bytes         = options.delete(:min_bytes) || 1
       @max_wait_ms       = options.delete(:max_wait_ms) || 100
       @socket_timeout_ms = options.delete(:socket_timeout_ms) || @max_wait_ms + 10_000
+      @connect_timeout_ms = options.delete(:connect_timeout_ms) || @max_wait_ms + 10_000
 
       if @socket_timeout_ms < @max_wait_ms
         raise ArgumentError, "Setting socket_timeout_ms should be higher than max_wait_ms"
+      end
+
+      if @connect_timeout_ms < @max_wait_ms
+        raise ArgumentError, "Setting connect_timeout_ms should be higher than max_wait_ms"
       end
 
       if options.keys.any?

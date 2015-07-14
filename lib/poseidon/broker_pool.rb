@@ -6,8 +6,8 @@ module Poseidon
     class UnknownBroker < StandardError; end
 
     # @yieldparam [BrokerPool]
-    def self.open(client_id, seed_brokers, socket_timeout_ms, &block)
-      broker_pool = new(client_id, seed_brokers, socket_timeout_ms)
+    def self.open(client_id, seed_brokers, socket_timeout_ms, connect_timeout_ms, &block)
+      broker_pool = new(client_id, seed_brokers, socket_timeout_ms, connect_timeout_ms)
 
       yield broker_pool
     ensure
@@ -15,12 +15,13 @@ module Poseidon
     end
 
     # @param [String] client_id
-    def initialize(client_id, seed_brokers, socket_timeout_ms)
+    def initialize(client_id, seed_brokers, socket_timeout_ms, connect_timeout_ms)
       @connections = {}
       @brokers = {}
       @client_id = client_id
       @seed_brokers = seed_brokers
       @socket_timeout_ms = socket_timeout_ms
+      @connect_timeout_ms = connect_timeout_ms
     end
 
     def fetch_metadata(topics)
@@ -64,7 +65,7 @@ module Poseidon
     private
     def fetch_metadata_from_broker(broker, topics)
       host, port = broker.split(":")
-      Connection.open(host, port, @client_id, @socket_timeout_ms) do |connection|
+      Connection.open(host, port, @client_id, @socket_timeout_ms, @connect_timeout_ms) do |connection|
         connection.topic_metadata(topics)
       end
     rescue Connection::ConnectionFailedError, Connection::TimeoutException
@@ -80,7 +81,7 @@ module Poseidon
       if info.nil?
         raise UnknownBroker
       end
-      Connection.new(info[:host], info[:port], @client_id, @socket_timeout_ms)
+      Connection.new(info[:host], info[:port], @client_id, @socket_timeout_ms, @connect_timeout_ms)
     end
   end
 end
