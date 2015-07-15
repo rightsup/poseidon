@@ -65,8 +65,15 @@ module Poseidon
     private
     def fetch_metadata_from_broker(broker, topics)
       host, port = broker.split(":")
-      Connection.open(host, port, @client_id, @socket_timeout_ms, @connect_timeout_ms) do |connection|
+      port = port.to_i
+
+      connection = @connections.values.detect {|connection| connection.host == host && connection.port == port}
+      if connection
         connection.topic_metadata(topics)
+      else
+        Connection.open(host, port, @client_id, @socket_timeout_ms, @connect_timeout_ms) do |connection|
+          connection.topic_metadata(topics)
+        end
       end
     rescue Connection::ConnectionFailedError, Connection::TimeoutException
       return nil
