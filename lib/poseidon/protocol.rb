@@ -9,7 +9,10 @@ module Poseidon
       :produce => 0,
       :fetch => 1,
       :offset => 2,
-      :metadata => 3
+      :metadata => 3,
+      :offset_commit => 8,
+      :offset_fetch => 9,
+      :consumer_metadata => 10
     }
 
     # Request/Response Common Structures
@@ -118,5 +121,44 @@ module Poseidon
     MetadataResponse = ProtocolStruct.new(:common => ResponseCommon,
                                           :brokers => [Broker],
                                           :topics => [TopicMetadata])
+
+    # Consumer Metadata API
+    ConsumerMetadataRequest = ProtocolStruct.new(:consumer_group => :string)
+    ConsumerMetadataResponse = ProtocolStruct.new(:error => :int16,
+                                                  :coordinator_id => :int32,
+                                                  :coordinator_host => :string,
+                                                  :coordinator_port => :int32)
+
+    # Offset Commit API
+    OffsetCommitTopicPartitionRequest = ProtocolStruct.new(:partition => :int32,
+                                                           :offset => :int64,
+                                                           :metadata => :string)
+    OffsetCommitTopicRequest = ProtocolStruct.new(:topic_name => :string,
+                                                  :partitions => [OffsetCommitTopicPartitionRequest])
+    OffsetCommitRequest = ProtocolStruct.new( :common => RequestCommon,
+                                              :consumer_group => :string,
+                                              :topics => [OffsetCommitTopicRequest])
+    OffsetCommitTopicPartitionResponse = ProtocolStruct.new(:partition => :int32,
+                                                            :error => :int16)
+    OffsetCommitTopicResponse = ProtocolStruct.new(:topic_name => :string,
+                                                   :partitions => [OffsetCommitTopicPartitionResponse])
+    OffsetCommitResponse = ProtocolStruct.new(:common => ResponseCommon,
+                                              :responses => [OffsetCommitTopicResponse])
+
+    # Offset Fetch API
+    OffsetFetchTopicPartition = ProtocolStruct.new(:partition => :int32)
+    OffsetFetchTopic = ProtocolStruct.new(:topic_name => :string,
+                                          :partitions => [OffsetFetchTopicPartition])
+    OffsetFetchRequest = ProtocolStruct.new(:common => RequestCommon,
+                                            :consumer_group => :string,
+                                            :topics => [OffsetFetchTopic])
+    OffsetTopicPartitionResponse = ProtocolStruct.new(:partition => :int32,
+                                                      :offset => :int64,
+                                                      :metadata => :string,
+                                                      :error => :int16)
+    OffsetTopicResponse = ProtocolStruct.new( :topic_name => :string,
+                                              :partitions => [OffsetTopicPartitionResponse])
+    OffsetFetchResponse = ProtocolStruct.new( :common => ResponseCommon,
+                                              :topic_responses => [OffsetTopicResponse])
   end
 end
