@@ -123,8 +123,10 @@ module Poseidon
                                           :topics => [TopicMetadata])
 
     # Consumer Metadata API
-    ConsumerMetadataRequest = ProtocolStruct.new(:consumer_group => :string)
-    ConsumerMetadataResponse = ProtocolStruct.new(:error => :int16,
+    ConsumerMetadataRequest = ProtocolStruct.new(:common => RequestCommon, 
+                                                 :consumer_group => :string)
+    ConsumerMetadataResponse = ProtocolStruct.new(:common => ResponseCommon,
+                                                  :error => :int16,
                                                   :coordinator_id => :int32,
                                                   :coordinator_host => :string,
                                                   :coordinator_port => :int32)
@@ -132,11 +134,14 @@ module Poseidon
     # Offset Commit API
     OffsetCommitTopicPartitionRequest = ProtocolStruct.new(:partition => :int32,
                                                            :offset => :int64,
+                                                           :timestamp => :int64,
                                                            :metadata => :string)
     OffsetCommitTopicRequest = ProtocolStruct.new(:topic_name => :string,
                                                   :partitions => [OffsetCommitTopicPartitionRequest])
     OffsetCommitRequest = ProtocolStruct.new( :common => RequestCommon,
                                               :consumer_group => :string,
+                                              :consumer_group_id => :int32,
+                                              :consumer_id => :string,
                                               :topics => [OffsetCommitTopicRequest])
     OffsetCommitTopicPartitionResponse = ProtocolStruct.new(:partition => :int32,
                                                             :error => :int16)
