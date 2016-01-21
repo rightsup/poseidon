@@ -67,7 +67,11 @@ module Poseidon
           break
         else
           Kernel.sleep retry_backoff_ms / 1000.0
-          refresh_metadata(messages_to_send.topic_set)
+          begin
+            refresh_metadata(messages_to_send.topic_set)
+          rescue Errors::UnableToFetchMetadata
+            # If we can't fetch metadata, continue with the next attempt.
+          end
         end
       end
 
