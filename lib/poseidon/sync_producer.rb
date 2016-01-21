@@ -54,6 +54,7 @@ module Poseidon
       end
 
       ensure_metadata_available_for_topics(messages_to_send)
+      total_message_count = messages_to_send.messages.size
 
       (@max_send_retries+1).times do
         messages_to_send.messages_for_brokers(@message_conductor).each do |messages_for_broker|
@@ -66,12 +67,17 @@ module Poseidon
           break
         else
           Kernel.sleep retry_backoff_ms / 1000.0
-          refresh_metadata(messages_to_send.topic_set)
+          begin
+            refresh_metadata(messages_to_send.topic_set)
+          rescue Errors::UnableToFetchMetadata
+            # If we can't fetch metadata, continue with the next attempt.
+          end
         end
       end
 
       if messages_to_send.pending_messages?
-        raise "Poseidon: Failed to send all messages: #{messages_to_send.messages} remaining"
+        failed_messages = messages_to_send.messages
+        raise Errors::MessageFailedToSendError.new(failed_messages, "Poseidon: Failed to send #{failed_messages.size} out of #{total_message_count} messages")
       else
         true
       end

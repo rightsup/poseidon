@@ -76,6 +76,16 @@ module Poseidon
     # Raised when you try to send messages to a producer
     # object that has been #shutdown
     class ProducerShutdownError < StandardError; end
+
+    # Raised when any messages failed to send
+    class MessageFailedToSendError < StandardError
+      attr_reader :failed_messages # array of Messages
+
+      def initialize(failed_messages, message)
+        @failed_messages = failed_messages
+        super(message)
+      end
+    end
   end
 
   def self.logger
