@@ -99,6 +99,59 @@ module Poseidon
       read_response(MetadataResponse)
     end
 
+    # Fetch consumer offset
+    #
+    # @param [String] group_name
+    #   The name of the consumer group
+    # @param [Hash<String,Array<String>>] topics_with_partitions
+    #   Which topics and partitions to fetch offsets for
+    # @return [OffsetFetchResponse]
+    def fetch_consumer_offset(group_name, topics_with_partitions)
+      ensure_connected
+      topics = []
+      topics_with_partitions.each do |topic, partitions|
+        topics << OffsetFetchTopic.new(topic, partitions.map{|partition| OffsetFetchTopicPartition.new(partition)})
+      end
+      req = OffsetFetchRequest.new( request_common(:offset_fetch, 1),
+                                    group_name, 
+                                    topics)
+      send_request(req)
+      read_response(OffsetFetchResponse)
+    end
+
+    # Set the consumer offset
+    #
+    # @params [String] group_name
+    #   The name of the consumer group
+    # @param [Hash<String,Array<Array>>>] topics_with_partition_data
+    #   The topics and partition values to write. i.e. {'topic1' => [[0, 2222, 'some metadata'], [1, 3333, 'more meta']]}
+    # @return [OffsetCommitResponse]
+    def set_consumer_offset(group_name, topics_with_partition_data)
+      ensure_connected
+      topics = []
+      topics_with_partition_data.each do |topic, partitions_data|
+        data = partitions_data.map do |partition, offset, metadata|
+          OffsetCommitTopicPartitionRequest.new(partition, offset, Time.now.to_i*1000, metadata)
+        end
+        topics << OffsetCommitTopicRequest.new(topic, data)
+      end
+      req = OffsetCommitRequest.new(request_common(:offset_commit, 1),
+                                    group_name,
+                                    0,
+                                    group_name,
+                                    topics)
+      send_request(req)
+      read_response(OffsetCommitResponse)
+    end
+
+    def get_consumer_metadata(group_name)
+      ensure_connected
+      req = ConsumerMetadataRequest.new(request_common(:consumer_metadata),
+                                        group_name)
+      send_request(req)
+      read_response(ConsumerMetadataResponse)
+    end
+
     private
     def ensure_connected
       if @socket.nil? || @socket.closed?
@@ -185,10 +238,10 @@ module Poseidon
       end
     end
 
-    def request_common(request_type)
+    def request_common(request_type, api_version = API_VERSION)
       RequestCommon.new(
         API_KEYS[request_type],
-        API_VERSION,
+        api_version,
         next_correlation_id,
         @client_id
       )
