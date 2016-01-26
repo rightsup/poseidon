@@ -1,0 +1,8 @@
+poseidon:
+  build: .
+  command: bash
+  volumes:
+    - .:/app
+poseidon_test:
+  build: .
+  command: bundle exec rake spec:all

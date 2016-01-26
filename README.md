@@ -70,3 +70,11 @@ In order to run integration tests you must specify a `KAFKA_PATH` environment va
     # KAFKA_PATH=~/src/kafka bundle exec rake spec:all # run all unit and integration specs
 
 The poseidon test suite will take care of spinning up and down the broker(s) needed for the integration tests.
+
+
+## Test Suite can be run in a Docker
+With [docker-compose](https://docs.docker.com/compose/)
+
+```
+docker-compose run poseidon_test
+```
